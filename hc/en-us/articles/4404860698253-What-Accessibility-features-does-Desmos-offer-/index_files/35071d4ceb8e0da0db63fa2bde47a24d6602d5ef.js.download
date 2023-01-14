@@ -1,0 +1,395 @@
+/**
+ * LotusUtils v1.0.0 - A set of useful helpers
+ * Copyright (c) 2015-2019 Lotus Themes <hello@lotusthemes.com>
+ */
+/* eslint-disable no-undef, no-loops/no-loops, no-useless-escape, consistent-return */
+(function ($, window, document) {
+  const LotusUtils = {
+    /**
+     * Get HC locale
+     * @param {string?} pageUrl: page url
+     * @return {string}: locale
+     */
+    getLocale(pageUrl) {
+      if (
+        this.isContributionsPostsPage() ||
+        this.isContributionsCommunityCommentsPage() ||
+        this.isContributionsCommentsPage()
+      ) {
+        return this.getUrlParameter('locale');
+      }
+      const url = pageUrl || window.location.href;
+      const links = url.split('/');
+      const hcIndex = links.indexOf('hc');
+      const links2 = links[hcIndex + 1].split('?');
+
+      return links2[0].replace('?', '').replace('#', '');
+    },
+
+    /**
+     * Get page ID
+     * @param {string?} pageUrl: page url
+     * @return {number | null}: page ID or null
+     */
+    getPageId(pageUrl) {
+      const url = pageUrl || window.location.href;
+      const links = url.split('/');
+      const result = links[links.length - 1];
+      return parseInt(result, 10) || null;
+    },
+
+    /**
+     * Get category ID
+     * @param {string?} url: page url
+     * @return {number | null}: category ID or null
+     */
+    getCategoryId(url) {
+      if (this.isCategoryPage(url)) {
+        return this.getPageId(url);
+      }
+      if (!url) {
+        const $breadcrumbsItems = $('.breadcrumbs li');
+        for (let i = 0; i < $breadcrumbsItems.length; i += 1) {
+          const linkUrl = $breadcrumbsItems.eq(i).find('a').attr('href');
+          if (linkUrl && this.isCategoryPage(linkUrl)) {
+            return this.getPageId(linkUrl);
+          }
+        }
+      }
+      return null;
+    },
+
+    /**
+     * Get section ID
+     * @param {string?} url: page url
+     * @return {number | null}: section ID or null
+     */
+    getSectionId(url) {
+      if (this.isSectionPage(url)) {
+        return this.getPageId(url);
+      }
+      if (!url) {
+        const $breadcrumbsItems = $('.breadcrumbs li');
+        for (let i = 0; i < $breadcrumbsItems.length; i += 1) {
+          const linkUrl = $breadcrumbsItems.eq(i).find('a').attr('href');
+          if (linkUrl && this.isSectionPage(linkUrl)) {
+            return this.getPageId(linkUrl);
+          }
+        }
+      }
+      return null;
+    },
+
+    /**
+     * Get article ID
+     * @param {string?} url: page url
+     * @return {number | null}: article ID or null
+     */
+    getArticleId(url) {
+      if (this.isArticlePage(url)) {
+        return this.getPageId(url);
+      }
+      return null;
+    },
+
+    /**
+     * Get current user info
+     * @param {function} callback
+     * @async
+     */
+    getCurrentUser(callback) {
+      const context = this;
+      $.getJSON('/api/v2/users/me.json')
+        .done((response) => callback.call(context, null, response.user))
+        .fail((jqxhr) => callback.call(context, jqxhr, null));
+    },
+
+    /**
+     * Get all article images
+     * @param {String} articleBody: article body
+     * @return {Array}
+     */
+    getArticleImages(articleBody) {
+      const $body = $(`<div>${articleBody}</div>`);
+      const $images = $body.find('img');
+
+      return $images.map(function () {
+        return this.getAttribute('src');
+      });
+    },
+
+    getUrlParameter(param) {
+      const pageURL = window.location.search.substring(1);
+      const URLVariables = pageURL.split('&');
+      let parameterName;
+      let i;
+
+      for (i = 0; i < URLVariables.length; i += 1) {
+        parameterName = URLVariables[i].split('=');
+
+        if (parameterName[0] === param) {
+          return parameterName[1] === undefined
+            ? true
+            : decodeURIComponent(parameterName[1]);
+        }
+      }
+    },
+
+    /**
+     * Is home page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isHomePage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /^http(s)?:\/\/[^\/?#]+(\/hc(\/[a-z-0-9_]+)?(\/)?(signin)?([?]([^?\/]+)?)?([#]([^#\/]+)?)?)?$/.test(
+        url
+      );
+    },
+
+    /**
+     * Is category page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isCategoryPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?categories\//i.test(url);
+    },
+
+    /**
+     * Is section page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isSectionPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?sections\//i.test(url);
+    },
+
+    /**
+     * Is article page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isArticlePage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?articles\//i.test(url);
+    },
+
+    /**
+     * Is search results page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isSearchResultsPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?search\?*.*/i.test(url);
+    },
+
+    /**
+     * Is contributions posts page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isContributionsPostsPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?contributions\/posts(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is contributions community comments page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isContributionsCommunityCommentsPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?contributions\/community_comments(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is contributions community comments page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isContributionsCommentsPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?contributions\/comments(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is following page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isFollowingPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?subscriptions(\/)?([?#].*)?$/i.test(url);
+    },
+
+    /**
+     * Is request list page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isRequestListPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?requests(\/)?([?#].*)?$/i.test(url);
+    },
+
+    /**
+     * Is request page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isRequestPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return (
+        !this.isNewRequestPage(url) &&
+        /\/hc\/([a-z-0-9_]+\/)?requests\/[^/?#]+(\/)?([?#].*)?$/i.test(url)
+      );
+    },
+
+    /**
+     * Is new request page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isNewRequestPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?requests\/new(\/)?([?#].*)?$/i.test(url);
+    },
+
+    /**
+     * Is community topic list page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isCommunityTopicListPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?community\/topics(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is community topic page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isCommunityTopicPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?community\/topics\/[^\/?#]+(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is community post list page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isCommunityPostListPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?community\/posts(\/)?([?#].*)?$/i.test(url);
+    },
+
+    /**
+     * Is community post page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isCommunityPostPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return (
+        !this.isNewCommunityPostPage(url) &&
+        /\/hc\/([a-z-0-9_]+\/)?community\/posts\/[^\/?#]+(\/)?([?#].*)?$/i.test(
+          url
+        )
+      );
+    },
+
+    /**
+     * Is new community post page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isNewCommunityPostPage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?community\/posts\/new(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is user profile page
+     * @param {string?} pageUrl: page url
+     * @return {boolean}
+     */
+    isUserProfilePage(pageUrl) {
+      const url = pageUrl || window.location.href;
+      return /\/hc\/([a-z-0-9_]+\/)?profiles\/[^\/?#]+(\/)?([?#].*)?$/i.test(
+        url
+      );
+    },
+
+    /**
+     * Is end user
+     * @param {object|undefined} user: user info object, getting from this.getCurrentUser()
+     * @return {boolean}
+     */
+    isEndUser(user) {
+      return !!(user && user.role && user.role === 'end-user');
+    },
+
+    /**
+     * Has user tags
+     * @param {object|undefined} user: user info object, getting from this.getCurrentUser()
+     * @param {Array<string>} tags
+     * @return {boolean}
+     */
+    hasUserTags(user, tags) {
+      if (user && user.tags) {
+        return this.findOne(tags, user.tags);
+      }
+      return false;
+    },
+
+    /**
+     * @description determine if an array contains one or more items from another array.
+     * @param {array} haystack the array to search.
+     * @param {array} arr the array providing items to check for in the haystack.
+     * @return {boolean} true|false if haystack contains at least one item from arr.
+     */
+    findOne(haystack, arr) {
+      return arr.some((v) => haystack.indexOf(v) >= 0);
+    },
+
+    truncate(text, limit, clamp) {
+      const currentClamp = clamp || '...';
+      const node = document.createElement('div');
+      node.innerHTML = text;
+      const content = node.textContent;
+      return content.length > limit
+        ? content.slice(0, limit) + currentClamp
+        : content;
+    },
+
+    flatten(array) {
+      if (!array.length) {
+        return [];
+      }
+      return array.reduce((prev, curr) => prev.concat(curr));
+    },
+  };
+  /* eslint-disable no-param-reassign */
+  window.LotusUtils = LotusUtils;
+  /* eslint-enable no-param-reassign */
+})(jQuery, window, document);
+/* eslint-enable no-undef, no-loops/no-loops, no-useless-escape, consistent-return */

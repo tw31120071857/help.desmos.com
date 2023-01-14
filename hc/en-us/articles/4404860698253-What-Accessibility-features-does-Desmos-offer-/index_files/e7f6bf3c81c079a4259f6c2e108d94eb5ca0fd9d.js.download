@@ -1,0 +1,60 @@
+/**
+ * Open tickets badge Template Script
+ * ------------------------------------------------------------------------------
+ * Displays a number of open tickets
+ *
+ */
+
+const OpenTicketsBadge = (function () {
+  function getDefaultRequestConfig() {
+    return JSON.parse(
+      JSON.stringify({
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/json;',
+        },
+      }),
+    );
+  }
+
+  function fetchJSON(url, config) {
+    return fetch(url, config).then((response) => {
+      if (!response.ok) {
+        throw response;
+      }
+      return response.json();
+    });
+  }
+
+  function getTickets() {
+    return fetchJSON('/api/v2/requests.json?status=new,open', getDefaultRequestConfig());
+  }
+
+  function getCount() {
+    return getTickets().then((response) => response.count);
+  }
+
+  return {
+    render() {
+      const elements = document.querySelectorAll('.js-open-tickets-badge');
+      getCount().then((count) => {
+        [...elements].forEach((element) => {
+          if (elements.length && count > 0) {
+            const currentEl = element;
+            currentEl.innerText = count;
+            currentEl.classList.add('is-active');
+          }
+        });
+        if (count > 0) {
+          const { title } = document;
+          document.title = `(${count}) ${title}`;
+        }
+      });
+    },
+  };
+}());
+
+if (LotusConfig.signedIn) {
+  OpenTicketsBadge.render();
+}
